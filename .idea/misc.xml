@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.12 (playwright_python_thanhcaviet)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (playwright_python_thanhcaviet)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.12 (playwright_python_basic)" project-jdk-type="Python SDK" />
 </project>
