@@ -1,6 +1,6 @@
 from playwright.sync_api._generated import ElementHandle
 from playwright.sync_api import expect, Page
-from session_28.pages.base_page import Base
+from pages.base_page import Base
 
 class LoginPage(Base):
     @property

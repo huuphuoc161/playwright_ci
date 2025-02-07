@@ -1,5 +1,5 @@
 from playwright.sync_api import Page
-from session_28.pages.login_page import LoginPage
+from pages.login_page import LoginPage
 import allure
 
 wrong_credential = "Epic sadface: Username and password do not match any user in this service"

@@ -1,6 +1,6 @@
 from playwright.sync_api import Page
-from session_28.pages.login_page import LoginPage
-from session_28.pages.inventory_page import InventoryPage
+from pages.login_page import LoginPage
+from pages.inventory_page import InventoryPage
 import allure
 
 @allure.feature("Login Feature")

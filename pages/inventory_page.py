@@ -1,6 +1,6 @@
 from playwright.sync_api import ElementHandle
 from playwright.sync_api import Page, expect
-from session_28.pages.base_page import Base
+from pages.base_page import Base
 class InventoryPage(Base):
 
     @property
