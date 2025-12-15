@@ -1,0 +1,121 @@
+# Playwright Test Configuration
+# File: test-suite.yaml
+# Description: Comprehensive test suite for Playwright CI framework
+# Updated: 2025-12-15
+
+test_suites:
+  smoke:
+    name: "Smoke Tests"
+    description: "Quick sanity tests for critical paths"
+    tests:
+      - "tests/login_suite.py::test_election_app_login_correct_password"
+      - "tests/login_suite.py::test_saucedemo_login_standard_user"
+    timeout: 60
+    retries: 1
+    markers: ["smoke"]
+
+  election_app:
+    name: "Election App Tests"
+    description: "Complete test suite for election-ht.vercel.app"
+    tests:
+      - "tests/login_suite.py::test_election_app_login_correct_password"
+      - "tests/login_suite.py::test_election_app_login_wrong_password"
+    timeout: 300
+    retries: 2
+    markers: ["election_app"]
+
+  saucedemo:
+    name: "SauceDemo Tests"
+    description: "Complete test suite for saucedemo.com"
+    tests:
+      - "tests/login_suite.py::test_saucedemo_login_standard_user"
+      - "tests/login_suite.py::test_saucedemo_login_wrong_credentials"
+      - "tests/login_suite.py::test_saucedemo_login_locked_out_user"
+    timeout: 300
+    retries: 1
+    markers: ["saucedemo"]
+
+  regression:
+    name: "Regression Tests"
+    description: "Full regression test suite - all tests"
+    tests:
+      - "tests/login_suite.py"
+    timeout: 600
+    retries: 0
+    markers: []
+
+browsers:
+  - chromium
+  - firefox
+  - webkit
+
+execution:
+  parallel_workers: 2
+  headless: false
+  slow_mo: 500  # milliseconds for better visibility
+  timeout: 30000  # milliseconds (30 seconds)
+  retries: 1
+  base_url: ""
+
+reporting:
+  html_report: false
+  junit_xml: true
+  allure_report: false
+  screenshot_on_failure: false
+  video_on_failure: false
+  trace: false
+  text_report: true  # result.txt
+
+environments:
+  election_app:
+    name: "Election App - Production"
+    base_url: "https://election-ht.vercel.app"
+    timeout: 30000
+    credentials: "TEST_USERNAME, TEST_PWD"
+  
+  saucedemo:
+    name: "SauceDemo - Public"
+    base_url: "https://www.saucedemo.com"
+    timeout: 30000
+    credentials: "hardcoded (demo site)"
+
+test_cases:
+  - id: TC_001
+    name: "test_election_app_login_correct_password"
+    suite: "election_app"
+    markers: ["election_app", "smoke"]
+    description: "Verify login with valid credentials from .env"
+    priority: "P1"
+    status: "Active"
+
+  - id: TC_002
+    name: "test_election_app_login_wrong_password"
+    suite: "election_app"
+    markers: ["election_app"]
+    description: "Verify login fails with incorrect password"
+    priority: "P1"
+    status: "Active"
+
+  - id: TC_003
+    name: "test_saucedemo_login_standard_user"
+    suite: "saucedemo"
+    markers: ["saucedemo", "smoke"]
+    description: "Verify standard user can login to SauceDemo"
+    priority: "P1"
+    status: "Active"
+
+  - id: TC_004
+    name: "test_saucedemo_login_wrong_credentials"
+    suite: "saucedemo"
+    markers: ["saucedemo"]
+    description: "Verify login fails with wrong credentials"
+    priority: "P2"
+    status: "Active"
+
+  - id: TC_005
+    name: "test_saucedemo_login_locked_out_user"
+    suite: "saucedemo"
+    markers: ["saucedemo"]
+    description: "Verify locked user cannot login"
+    priority: "P2"
+    status: "Active"

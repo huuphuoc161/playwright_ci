@@ -4,3 +4,6 @@ pytest
 pytest-html
 pytest-xdist
 PyYAML
+python-dotenv
+allure-pytest
+extend-report-selenium
