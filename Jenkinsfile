@@ -20,6 +20,7 @@ pipeline {
     }
     
     environment {
+        PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
         PYTHON_VERSION = '3.9'
         WORKSPACE_DIR = "${WORKSPACE}"
         REPORTS_DIR = "${WORKSPACE}/reports"
@@ -43,8 +44,8 @@ pipeline {
             steps {
                 echo "⚙️  Setting up Python environment..."
                 bat '''
-                    python --version
-                    python -m venv venv
+                    %PYTHON_CMD% --version
+                    %PYTHON_CMD% -m venv venv
                     call venv\\Scripts\\activate.bat
                     pip install --upgrade pip
                     pip install -r requirements.txt
