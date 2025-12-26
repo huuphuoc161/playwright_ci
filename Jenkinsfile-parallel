@@ -1,0 +1,115 @@
+// Jenkinsfile-parallel
+// Runs multiple test suites in parallel for faster execution
+// Use this when you have multiple test files to run
+
+pipeline {
+    agent any
+    
+    environment {
+        PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
+        WORKSPACE_DIR = "${WORKSPACE}"
+        REPORTS_DIR = "${WORKSPACE}\\reports"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "🔄 Checking out code..."
+                checkout scm
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                echo "⚙️  Setting up Python environment..."
+                bat '''
+                    %PYTHON_CMD% --version
+                    %PYTHON_CMD% -m venv venv
+                    call venv\\Scripts\\activate.bat
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+        
+        stage('Install Playwright') {
+            steps {
+                echo "🎭 Installing Playwright browsers..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    playwright install chromium
+                '''
+            }
+        }
+        
+        stage('Run Tests in Parallel') {
+            parallel {
+                stage('Login Tests') {
+                    steps {
+                        echo "🧪 Running Login Tests..."
+                        bat '''
+                            call venv\\Scripts\\activate.bat
+                            if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
+                            
+                            pytest tests\\login_suite.py -v ^
+                                --junit-xml="%REPORTS_DIR%\\login_results.xml"
+                        '''
+                    }
+                }
+                
+                stage('Election Tests') {
+                    steps {
+                        echo "🗳️  Running Election Tests..."
+                        bat '''
+                            call venv\\Scripts\\activate.bat
+                            if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
+                            
+                            pytest tests\\election_page.py -v ^
+                                --junit-xml="%REPORTS_DIR%\\election_results.xml"
+                        '''
+                    }
+                }
+                
+                stage('Inventory Tests') {
+                    steps {
+                        echo "📦 Running Inventory Tests..."
+                        bat '''
+                            call venv\\Scripts\\activate.bat
+                            if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
+                            
+                            pytest tests\\inventory_page.py -v ^
+                                --junit-xml="%REPORTS_DIR%\\inventory_results.xml"
+                        '''
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "📊 Publishing test results..."
+            junit testResults: "${REPORTS_DIR}\\*_results.xml", allowEmptyResults: true
+            archiveArtifacts artifacts: "${REPORTS_DIR}/**/*", allowEmptyArchive: true
+            
+            script {
+                currentBuild.description = """
+                <h3>📊 Parallel Test Results:</h3>
+                <ul>
+                    <li>Login Tests: ✓</li>
+                    <li>Election Tests: ✓</li>
+                    <li>Inventory Tests: ✓</li>
+                </ul>
+                """
+            }
+        }
+        
+        success {
+            echo "✅ All parallel tests passed!"
+        }
+        
+        failure {
+            echo "❌ Some tests failed!"
+        }
+    }
+}

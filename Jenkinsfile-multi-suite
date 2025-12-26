@@ -1,0 +1,146 @@
+// Jenkinsfile-multi-suite
+// Runs all available test suites sequentially with comprehensive reporting
+// Use this for complete test execution across all test files
+
+pipeline {
+    agent any
+    
+    environment {
+        PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
+        WORKSPACE_DIR = "${WORKSPACE}"
+        REPORTS_DIR = "${WORKSPACE}\\reports"
+        ALLURE_RESULTS = "${WORKSPACE}\\reports\\allure-results"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "🔄 Checking out code..."
+                checkout scm
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                echo "⚙️  Setting up Python environment..."
+                bat '''
+                    %PYTHON_CMD% --version
+                    %PYTHON_CMD% -m venv venv
+                    call venv\\Scripts\\activate.bat
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+        
+        stage('Install Playwright') {
+            steps {
+                echo "🎭 Installing Playwright browsers..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    playwright install chromium
+                '''
+            }
+        }
+        
+        stage('Run Login Tests') {
+            steps {
+                echo "🧪 Running Login Test Suite..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
+                    
+                    pytest tests\\login_suite.py -v ^
+                        --junit-xml="%REPORTS_DIR%\\login_results.xml" ^
+                        --html="%REPORTS_DIR%\\login_report.html" ^
+                        --self-contained-html ^
+                        --alluredir="%REPORTS_DIR%\\allure-results"
+                '''
+            }
+        }
+        
+        stage('Run Election Tests') {
+            when {
+                fileExists('tests/election_page.py')
+            }
+            steps {
+                echo "🗳️  Running Election Test Suite..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    
+                    pytest tests\\election_page.py -v ^
+                        --junit-xml="%REPORTS_DIR%\\election_results.xml" ^
+                        --html="%REPORTS_DIR%\\election_report.html" ^
+                        --self-contained-html ^
+                        --alluredir="%REPORTS_DIR%\\allure-results"
+                '''
+            }
+        }
+        
+        stage('Run Inventory Tests') {
+            when {
+                fileExists('tests/inventory_page.py')
+            }
+            steps {
+                echo "📦 Running Inventory Test Suite..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    
+                    pytest tests\\inventory_page.py -v ^
+                        --junit-xml="%REPORTS_DIR%\\inventory_results.xml" ^
+                        --html="%REPORTS_DIR%\\inventory_report.html" ^
+                        --self-contained-html ^
+                        --alluredir="%REPORTS_DIR%\\allure-results"
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "📊 Publishing comprehensive test results..."
+            junit testResults: "${REPORTS_DIR}\\*_results.xml", allowEmptyResults: true
+            archiveArtifacts artifacts: "${REPORTS_DIR}/**/*", allowEmptyArchive: true
+            
+            // Publish individual HTML reports
+            publishHTML target: [
+                reportDir: "${REPORTS_DIR}",
+                reportFiles: 'login_report.html',
+                reportName: 'Login Tests Report'
+            ]
+            
+            // Publish Allure report if available
+            script {
+                if (fileExists("${REPORTS_DIR}\\allure-results")) {
+                    echo "📈 Publishing Allure report..."
+                    try {
+                        allure includeProperties: false,
+                               jdk: '',
+                               results: [[path: "${REPORTS_DIR}\\allure-results"]]
+                    } catch (Exception e) {
+                        echo "⚠️  Allure plugin not available"
+                    }
+                }
+            }
+            
+            // Update build description
+            script {
+                currentBuild.description = """
+                <h3>📊 Complete Test Suite Results:</h3>
+                <ul>
+                    <li><a href="Login%20Tests%20Report/">📄 Login Tests Report</a></li>
+                    <li><a href="allure-report/">📈 Allure Report (Trends)</a></li>
+                </ul>
+                """
+            }
+        }
+        
+        success {
+            echo "✅ All test suites passed!"
+        }
+        
+        failure {
+            echo "❌ Some test suites failed!"
+        }
+    }
+}

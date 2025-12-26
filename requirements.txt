@@ -1,8 +1,16 @@
-# Playwright CI Dependencies
-playwright>=1.45.0
-pytest-playwright>=0.4.0
-pytest>=7.0.0
-pytest-html>=3.1.0
-pytest-xdist>=3.0.0
-PyYAML>=6.0
-python-dotenv>=0.19.0
+# Core Playwright dependencies
+playwright
+pytest-playwright
+
+# Testing framework and utilities
+pytest
+pytest-html
+pytest-xdist
+
+# Configuration and utilities
+PyYAML
+python-dotenv
+
+# Enhanced Reporting
+allure-pytest
+allure-behave

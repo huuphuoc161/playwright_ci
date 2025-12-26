@@ -1,41 +1,21 @@
+// Jenkinsfile-with-allure
+// Focused on Allure reporting with trend charts
+// Use this to generate Allure reports for trend analysis
+
 pipeline {
     agent any
     
-    parameters {
-        choice(
-            name: 'BROWSER',
-            choices: ['chromium', 'firefox', 'webkit'],
-            description: 'Select browser for testing'
-        )
-        booleanParam(
-            name: 'HEADLESS_MODE',
-            defaultValue: true,
-            description: 'Run tests in headless mode'
-        )
-        string(
-            name: 'PARALLEL_WORKERS',
-            defaultValue: '2',
-            description: 'Number of parallel test workers'
-        )
-    }
-    
     environment {
         PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
-        PYTHON_VERSION = '3.9'
         WORKSPACE_DIR = "${WORKSPACE}"
-        REPORTS_DIR = "${WORKSPACE}/reports"
-    }
-    
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '30'))
-        timeout(time: 1, unit: 'HOURS')
-        timestamps()
+        REPORTS_DIR = "${WORKSPACE}\\reports"
+        ALLURE_RESULTS = "${WORKSPACE}\\reports\\allure-results"
     }
     
     stages {
         stage('Checkout') {
             steps {
-                echo "🔄 Checking out code from repository..."
+                echo "🔄 Checking out code..."
                 checkout scm
             }
         }
@@ -65,11 +45,14 @@ pipeline {
         
         stage('Run Tests') {
             steps {
-                echo "🧪 Executing Playwright tests..."
+                echo "🧪 Running tests with Allure reporting..."
                 bat '''
                     call venv\\Scripts\\activate.bat
                     if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
-                    pytest tests\\login_suite.py -v --junit-xml="%REPORTS_DIR%\\junit.xml"
+                    
+                    pytest tests\\login_suite.py -v ^
+                        --junit-xml="%REPORTS_DIR%\\junit.xml" ^
+                        --alluredir="%REPORTS_DIR%\\allure-results"
                 '''
             }
         }
@@ -77,17 +60,30 @@ pipeline {
     
     post {
         always {
-            echo "🧹 Publishing reports..."
+            echo "📊 Publishing Allure report..."
             junit testResults: "${REPORTS_DIR}\\junit.xml", allowEmptyResults: true
             archiveArtifacts artifacts: "${REPORTS_DIR}/**/*", allowEmptyArchive: true
+            
+            script {
+                if (fileExists("${REPORTS_DIR}\\allure-results")) {
+                    echo "📈 Generating Allure report..."
+                    try {
+                        allure includeProperties: false,
+                               jdk: '',
+                               results: [[path: "${REPORTS_DIR}\\allure-results"]]
+                    } catch (Exception e) {
+                        echo "⚠️  Allure plugin not available: ${e.message}"
+                    }
+                }
+            }
         }
         
         success {
-            echo "✅ Pipeline completed successfully!"
+            echo "✅ Tests passed!"
         }
         
         failure {
-            echo "❌ Pipeline failed! Check reports for details."
+            echo "❌ Tests failed!"
         }
     }
 }

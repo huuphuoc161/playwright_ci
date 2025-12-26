@@ -1,0 +1,125 @@
+// Jenkinsfile-with-envinject
+// Optimized for envInject plugin with environment variable injection
+// Use this with env.properties or Jenkins UI variable configuration
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'BROWSER',
+            choices: ['chromium', 'firefox', 'webkit'],
+            description: 'Select browser for testing'
+        )
+    }
+    
+    environment {
+        PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
+        WORKSPACE_DIR = "${WORKSPACE}"
+        REPORTS_DIR = "${WORKSPACE}\\reports"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "🔄 Checking out code..."
+                checkout scm
+            }
+        }
+        
+        stage('Inject Environment Variables') {
+            steps {
+                echo "💉 Injecting environment variables..."
+                script {
+                    // Check for env.properties file
+                    if (fileExists("${WORKSPACE}\\env.properties")) {
+                        echo "📝 Found env.properties, injecting variables..."
+                        step([$class: 'EnvInjectBuilder',
+                              info: [propertiesFilePath: '${WORKSPACE}\\env.properties',
+                                     loadFromMaster: false]
+                        ])
+                        
+                        echo "✅ Variables injected:"
+                        echo "  TEST_URL: ${env.TEST_URL ?: 'NOT SET'}"
+                        echo "  TEST_USERNAME: ${env.TEST_USERNAME ?: 'NOT SET'}"
+                        echo "  TEST_TIMEOUT: ${env.TEST_TIMEOUT ?: 'NOT SET'}"
+                    } else {
+                        echo "⚠️  No env.properties found"
+                        echo "   Using Jenkins configuration or defaults"
+                    }
+                }
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                echo "⚙️  Setting up Python environment..."
+                bat '''
+                    %PYTHON_CMD% --version
+                    %PYTHON_CMD% -m venv venv
+                    call venv\\Scripts\\activate.bat
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+        
+        stage('Install Playwright') {
+            steps {
+                echo "🎭 Installing Playwright browsers..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    playwright install chromium
+                '''
+            }
+        }
+        
+        stage('Run Login Tests') {
+            steps {
+                echo "🧪 Running login tests..."
+                script {
+                    echo "Test Configuration:"
+                    echo "  Browser: ${params.BROWSER}"
+                    if (env.TEST_URL) {
+                        echo "  Test URL: ${env.TEST_URL}"
+                    }
+                    if (env.TEST_USERNAME) {
+                        echo "  Test User: ${env.TEST_USERNAME}"
+                    }
+                }
+                
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
+                    
+                    pytest tests\\login_suite.py -v ^
+                        --junit-xml="%REPORTS_DIR%\\junit.xml" ^
+                        --html="%REPORTS_DIR%\\report.html" ^
+                        --self-contained-html
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "📊 Publishing test results..."
+            junit testResults: "${REPORTS_DIR}\\junit.xml", allowEmptyResults: true
+            archiveArtifacts artifacts: "${REPORTS_DIR}/**/*", allowEmptyArchive: true
+            
+            publishHTML target: [
+                reportDir: "${REPORTS_DIR}",
+                reportFiles: 'report.html',
+                reportName: 'Test Report'
+            ]
+        }
+        
+        success {
+            echo "✅ Tests passed!"
+        }
+        
+        failure {
+            echo "❌ Tests failed!"
+        }
+    }
+}

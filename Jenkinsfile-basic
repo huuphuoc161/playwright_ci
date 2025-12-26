@@ -1,0 +1,74 @@
+// Jenkinsfile-basic
+// Simple version - Just runs tests without extensive reporting
+// Use this to quickly test if pipeline works
+
+pipeline {
+    agent any
+    
+    environment {
+        PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
+        WORKSPACE_DIR = "${WORKSPACE}"
+        REPORTS_DIR = "${WORKSPACE}\\reports"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "🔄 Checking out code..."
+                checkout scm
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                echo "⚙️  Setting up Python environment..."
+                bat '''
+                    %PYTHON_CMD% --version
+                    %PYTHON_CMD% -m venv venv
+                    call venv\\Scripts\\activate.bat
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+        
+        stage('Install Playwright') {
+            steps {
+                echo "🎭 Installing Playwright browsers..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    playwright install chromium
+                '''
+            }
+        }
+        
+        stage('Run Tests') {
+            steps {
+                echo "🧪 Running login tests..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
+                    
+                    pytest tests\\login_suite.py -v ^
+                        --junit-xml="%REPORTS_DIR%\\junit.xml"
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "📊 Publishing test results..."
+            junit testResults: "${REPORTS_DIR}\\junit.xml", allowEmptyResults: true
+            archiveArtifacts artifacts: "${REPORTS_DIR}/**/*", allowEmptyArchive: true
+        }
+        
+        success {
+            echo "✅ Tests passed!"
+        }
+        
+        failure {
+            echo "❌ Tests failed!"
+        }
+    }
+}
