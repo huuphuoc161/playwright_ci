@@ -9,6 +9,8 @@ pipeline {
         PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
         WORKSPACE_DIR = "${WORKSPACE}"
         REPORTS_DIR = "${WORKSPACE}\\reports"
+        JUNIT_REPORT_FILE = "${WORKSPACE}\\reports\\junit.xml"
+        HTML_REPORT_FILE = "${WORKSPACE}\\reports\\report.html"
     }
     
     stages {
@@ -50,6 +52,7 @@ pipeline {
                     if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
                     
                     pytest tests\\login_suite.py -v ^
+                        --html="%REPORTS_DIR%\\report.html" --self-contained-html ^
                         --junit-xml="%REPORTS_DIR%\\junit.xml"
                 '''
             }
@@ -60,6 +63,20 @@ pipeline {
         always {
             echo "📊 Publishing test results..."
             junit testResults: "${REPORTS_DIR}\\junit.xml", allowEmptyResults: true
+            
+            script {
+                echo 'Publishing HTML test report...'
+                publishHTML (target: [
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: "${REPORTS_DIR}",
+                    reportFiles: "report.html",
+                    reportName: 'Playwright HTML Report',
+                    reportTitles: ''
+                ])
+            }
+            
             archiveArtifacts artifacts: "${REPORTS_DIR}/**/*", allowEmptyArchive: true
         }
         

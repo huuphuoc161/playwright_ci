@@ -1,0 +1,17 @@
+# pipeline_config.yaml
+
+# --- General Pipeline Configuration ---
+python_executable_path: "C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\pythoncore-3.14-64\\python.exe"
+playwright_browsers_path_relative: "ms-playwright/" # Relative path within workspace
+
+# --- Test Execution Configuration ---
+test_suite_file: "tests\\login_suite.py" # The specific test file to run
+
+# --- Reporting Configuration ---
+reports_directory: "reports"
+junit_report_filename: "junit.xml"
+html_report_filename: "report.html"
+
+# --- Git Configuration (if needed for dynamic checkouts, though fixed here) ---
+git_repository_url: "https://github.com/huuphuoc161/playwright_ci.git/"
+git_branch: "main"

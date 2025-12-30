@@ -1,0 +1,255 @@
+// Jenkinsfile-multi-suite
+// Runs all available test suites sequentially with comprehensive reporting
+// Use this for complete test execution across all test files
+
+pipeline {
+    agent any
+    
+    parameters {
+        choice(
+            name: 'EXECUTION_MODE',
+            choices: ['sequential', 'parallel'],
+            description: 'Run tests sequentially or in parallel'
+        )
+        choice(
+            name: 'BROWSER',
+            choices: ['chromium', 'firefox', 'webkit'],
+            description: 'Select browser for testing'
+        )
+        choice(
+            name: 'HEADLESS_MODE',
+            choices: ['headless'],
+            description: 'Run tests in headless mode (no UI) or headed mode (with UI)'
+        )
+    }
+    
+    environment {
+        PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
+        WORKSPACE_DIR = "${WORKSPACE}"
+        REPORTS_DIR = "${WORKSPACE}\\reports"
+        ALLURE_RESULTS = "${WORKSPACE}\\reports\\allure-results"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "🔄 Checking out code..."
+                checkout scm
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                echo "⚙️  Setting up Python environment..."
+                bat '''
+                    %PYTHON_CMD% --version
+                    %PYTHON_CMD% -m venv venv
+                    call venv\\Scripts\\activate.bat
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+        
+        stage('Install Playwright') {
+            steps {
+                echo "🎭 Installing Playwright browsers..."
+                bat '''
+                    call venv\\Scripts\\activate.bat
+                    playwright install chromium firefox webkit
+                '''
+            }
+        }
+        
+        stage('Execute Tests') {
+            steps {
+                script {
+                    echo "🚀 Execution Mode: ${params.EXECUTION_MODE}"
+                    echo "🌐 Browser: ${params.BROWSER}"
+                    echo "📺 Headless Mode: ${params.HEADLESS_MODE}"
+                    
+                    if (params.EXECUTION_MODE == 'parallel') {
+                        echo "Running tests in PARALLEL mode..."
+                        parallel(
+                            'Login Tests': {
+                                runTests('tests\\login_suite.py', 'login')
+                            },
+                            'Election Tests': {
+                                if (fileExists('tests/election_page.py')) {
+                                    runTests('tests\\election_page.py', 'election')
+                                }
+                            },
+                            'Inventory Tests': {
+                                if (fileExists('tests/inventory_page.py')) {
+                                    runTests('tests\\inventory_page.py', 'inventory')
+                                }
+                            }
+                        )
+                    } else {
+                        echo "Running tests in SEQUENTIAL mode..."
+                        runTests('tests\\login_suite.py', 'login')
+                        if (fileExists('tests/election_page.py')) {
+                            runTests('tests\\election_page.py', 'election')
+                        }
+                        if (fileExists('tests/inventory_page.py')) {
+                            runTests('tests\\inventory_page.py', 'inventory')
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "📊 Publishing comprehensive test results..."
+            junit testResults: "${REPORTS_DIR}\\*_results.xml", allowEmptyResults: true
+            
+            script {
+                echo 'Publishing HTML test reports...'
+                
+                // Publish Login Report
+                publishHTML (target: [
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: "${REPORTS_DIR}",
+                    reportFiles: 'login_report.html',
+                    reportName: 'Login Tests Report'
+                ])
+                
+                // Publish Election Report if exists
+                if (fileExists("${REPORTS_DIR}\\election_report.html")) {
+                    publishHTML (target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${REPORTS_DIR}",
+                        reportFiles: 'election_report.html',
+                        reportName: 'Election Tests Report'
+                    ])
+                }
+                
+                // Publish Inventory Report if exists
+                if (fileExists("${REPORTS_DIR}\\inventory_report.html")) {
+                    publishHTML (target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${REPORTS_DIR}",
+                        reportFiles: 'inventory_report.html',
+                        reportName: 'Inventory Tests Report'
+                    ])
+                }
+            }
+            
+            archiveArtifacts artifacts: "${REPORTS_DIR}/**/*", allowEmptyArchive: true
+            
+            // Publish Allure report if available
+            script {
+                if (fileExists("${REPORTS_DIR}\\allure-results")) {
+                    echo "📈 Publishing Allure report..."
+                    try {
+                        allure includeProperties: false,
+                               jdk: '',
+                               results: [[path: "${REPORTS_DIR}\\allure-results"]]
+                    } catch (Exception e) {
+                        echo "⚠️  Allure plugin not available"
+                    }
+                }
+            }
+            
+            // Update build description
+            script {
+                currentBuild.description = """
+                <h3>📊 Complete Test Suite Results:</h3>
+                <ul>
+                    <li><a href="Login%20Tests%20Report/">📄 Login Tests Report</a></li>
+                    <li><a href="allure-report/">📈 Allure Report (Trends)</a></li>
+                </ul>
+                """
+            }
+        }
+        
+        success {
+            script {
+                echo "✅ Job Succeeded. Sending success email..."
+                emailext (
+                    to: 'testnotification012026@yopmail.com', // Địa chỉ email nhận khi thành công
+                    subject: "[Jenkins]: ${JOB_NAME} - Build #${BUILD_NUMBER}",
+                    body: """
+                        <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) thành công!</p>
+                        <p>Chi tiết: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                        <p>Báo cáo HTML: <a href="${BUILD_URL}${HTML_REPORT_URL_NAME}/">Xem báo cáo chi tiết</a></p>
+                        <p>Kết quả Test (JUnit): <a href="${BUILD_URL}testReport/">Xem tổng quan test</a></p>
+                    """,
+                    mimeType: 'text/html',
+                    attachmentsPattern: "${REPORTS_DIR}/${HTML_REPORT_FILE}" // Đính kèm  HTML
+                )
+            }
+        }
+        
+        failure {
+            script {
+                echo "❌ Job Failed. Sending failure email..."
+                emailext (
+                    to: 'testnotification012026@yopmail.com', // Địa chỉ email nhận khi thất bại
+                    subject: "[Jenkins]: ${JOB_NAME} - Build #${BUILD_NUMBER}",
+                    body: """
+                        <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) <b>THẤT BẠI</b>!</p>
+                        <p>Vui lòng kiểm tra gấp.</p>
+                        <p>Chi tiết build: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                        <p>Console Output: <a href="${BUILD_URL}console">Xem log lỗi</a></p>
+                        <p>Báo cáo HTML (nếu có): <a href="${BUILD_URL}${HTML_REPORT_URL_NAME}/">Xem báo cáo</a></p>
+                    """,
+                    mimeType: 'text/html',
+                    attachmentsPattern: "${REPORTS_DIR}/${HTML_REPORT_FILE}"
+                )
+            }
+        }
+
+        unstable {
+            script {
+                echo "⚠️ Job Unstable. Sending unstable email..."
+                emailext (
+                    to: 'testnotification012026@yopmail.com', // Địa chỉ email nhận khi không ổn định
+                    subject: "[Jenkins] KHÔNG ỔN ĐỊNH: ${JOB_NAME} - Build #${BUILD_NUMBER}",
+                    body: """
+                        <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) không ổn định!</p>
+                        <p>Vui lòng xem xét các lỗi test.</p>
+                        <p>Chi tiết build: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                        <p>Báo cáo HTML: <a href="${BUILD_URL}${HTML_REPORT_URL_NAME}/">Xem báo cáo chi tiết</a></p>
+                    """,
+                    mimeType: 'text/html',
+                    attachmentsPattern: "${REPORTS_DIR}/${HTML_REPORT_FILE}"
+                )
+            }
+        }
+    }
+}
+
+def runTests(testFile, testName) {
+    echo "🧪 Running ${testName} tests with ${params.BROWSER} browser (${params.HEADLESS_MODE} mode)..."
+    
+    def isHeadless = params.HEADLESS_MODE == 'headless' ? 'true' : 'false'
+    
+    bat """
+        call venv\\Scripts\\activate.bat
+        if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
+        
+        set PLAYWRIGHT_HEADLESS=${isHeadless}
+        
+        pytest ${testFile} -v ^
+            --junit-xml="%REPORTS_DIR%\\${testName}_results.xml" ^
+            --html="%REPORTS_DIR%\\${testName}_report.html" ^
+            --self-contained-html ^
+            --alluredir="%REPORTS_DIR%\\allure-results"
+    """
+}
+            --alluredir="%REPORTS_DIR%\\allure-results"
+    """
+}
+            --self-contained-html ^
+            --alluredir="%REPORTS_DIR%\\allure-results"
+    """
+}

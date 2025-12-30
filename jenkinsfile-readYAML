@@ -1,0 +1,131 @@
+pipeline {
+    agent any
+
+    def config = [:] // Initialize an empty map to hold our configuration
+
+    // Environment block for variables that Jenkins itself needs or are derived
+    environment {
+        // These will be populated from 'config' later, or are fixed paths
+        PYTHON_EXE = "" // Will be set from config.python_executable_path
+        PLAYWRIGHT_BROWSERS_PATH = "" // Will be set from config.playwright_browsers_path_relative + WORKSPACE
+        REPORTS_DIR = "" // Will be set from config.reports_directory
+        JUNIT_REPORT_FILE = "" // Will be set from config.reports_directory + config.junit_report_filename
+        HTML_REPORT_FILE = "" // Will be set from config.reports_directory + config.html_report_filename
+        TEST_SUITE = "" // Will be set from config.test_suite_file
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "🔄 Checking out code..."
+                // Use git config from YAML or keep it fixed if it rarely changes
+                // For now, keeping it fixed as it's common for the repo to define the pipeline
+                git branch: 'main', url: 'https://github.com/huuphuoc161/playwright_ci.git/'
+            }
+        }
+
+        stage('Load Configuration') {
+            steps {
+                script {
+                    echo "📝 Loading pipeline configuration from pipeline_config.yaml..."
+                    // Read the YAML file
+                    config = readYaml file: '.github/workflows/jenkinsPipeline.yaml'
+
+                    // Populate Jenkins environment variables from the loaded config
+                    env.PYTHON_EXE = config.python_executable_path
+                    env.PLAYWRIGHT_BROWSERS_PATH = "${WORKSPACE}/${config.playwright_browsers_path_relative}"
+                    env.REPORTS_DIR = config.reports_directory
+                    env.JUNIT_REPORT_FILE = "${config.reports_directory}/${config.junit_report_filename}"
+                    env.HTML_REPORT_FILE = "${config.reports_directory}/${config.html_report_filename}"
+                    env.TEST_SUITE = config.test_suite_file
+
+                    echo "Configuration loaded:"
+                    echo "  Python Executable: ${env.PYTHON_EXE}"
+                    echo "  Playwright Browsers Path: ${env.PLAYWRIGHT_BROWSERS_PATH}"
+                    echo "  Reports Directory: ${env.REPORTS_DIR}"
+                    echo "  JUnit Report File: ${env.JUNIT_REPORT_FILE}"
+                    echo "  HTML Report File: ${env.HTML_REPORT_FILE}"
+                    echo "  Test Suite: ${env.TEST_SUITE}"
+                }
+            }
+        }
+
+        stage('Setup Environment') {
+            steps {
+                echo "⚙️  Setting up Python environment..."
+                bat """
+                    echo "Using Python from: ${PYTHON_EXE}"
+                    "${PYTHON_EXE}" --version
+                    "${PYTHON_EXE}" -m venv venv
+                    call venv\\Scripts\\activate.bat
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    deactivate
+                """
+            }
+        }
+
+        stage('Install Playwright') {
+            steps {
+                echo "🎭 Installing Playwright browsers..."
+                bat """
+                    call venv\\Scripts\\activate.bat
+                    playwright install chromium
+                    deactivate
+                """
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                echo "🧪 Running tests from ${TEST_SUITE}..."
+                bat """
+                    call venv\\Scripts\\activate.bat
+                    
+                    if not exist "${REPORTS_DIR}" mkdir "${REPORTS_DIR}"
+                    
+                    pytest "${TEST_SUITE}" -v ^
+                        --html="${HTML_REPORT_FILE}" --self-contained-html ^
+                        --junit-xml="${JUNIT_REPORT_FILE}"
+                    deactivate
+                """
+            }
+        }
+
+        stage('Publish Test Reports') {
+            steps {
+                script {
+                    echo 'Publishing test reports...'
+
+                    junit "${JUNIT_REPORT_FILE}"
+
+                    publishHTML (target: [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${REPORTS_DIR}",
+                        reportFiles: "${HTML_REPORT_FILE.split('/')[-1]}",
+                        reportName: 'Playwright HTML Report',
+                        reportTitles: ''
+                    ])
+
+                    archiveArtifacts artifacts: "${REPORTS_DIR}/*", fingerprinter: true
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "📊 Publishing test results..."
+        }
+
+        success {
+            echo "✅ Tests passed!"
+        }
+
+        failure {
+            echo "❌ Tests failed!"
+        }
+    }
+}
