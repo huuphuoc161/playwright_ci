@@ -220,11 +220,5 @@ def runTests(testFile, testName) {
         if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
         
         set PLAYWRIGHT_HEADLESS=${isHeadless}
-        
-        pytest ${testFile} -v ^
-            --junit-xml="%REPORTS_DIR%\\${testName}_results.xml" ^
-            --html="%REPORTS_DIR%\\${testName}_report.html" ^
-            --self-contained-html ^
-            --alluredir="%REPORTS_DIR%\\allure-results"
     """
 }

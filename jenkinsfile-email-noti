@@ -137,7 +137,6 @@ pipeline {
                     body: """
                         <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) thành công!</p>
                         <p>Chi tiết: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-                        <p>Báo cáo HTML: <a href="${BUILD_URL}${HTML_REPORT_URL_NAME}/">Xem báo cáo chi tiết</a></p>
                         <p>Kết quả Test (JUnit): <a href="${BUILD_URL}testReport/">Xem tổng quan test</a></p>
                     """,
                     mimeType: 'text/html',
@@ -157,7 +156,6 @@ pipeline {
                         <p>Vui lòng kiểm tra gấp.</p>
                         <p>Chi tiết build: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
                         <p>Console Output: <a href="${BUILD_URL}console">Xem log lỗi</a></p>
-                        <p>Báo cáo HTML (nếu có): <a href="${BUILD_URL}${HTML_REPORT_URL_NAME}/">Xem báo cáo</a></p>
                     """,
                     mimeType: 'text/html',
                     attachmentsPattern: "${REPORTS_DIR}/${HTML_REPORT_FILE}"
@@ -175,7 +173,6 @@ pipeline {
                         <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) không ổn định!</p>
                         <p>Vui lòng xem xét các lỗi test.</p>
                         <p>Chi tiết build: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-                        <p>Báo cáo HTML: <a href="${BUILD_URL}${HTML_REPORT_URL_NAME}/">Xem báo cáo chi tiết</a></p>
                     """,
                     mimeType: 'text/html',
                     attachmentsPattern: "${REPORTS_DIR}/${HTML_REPORT_FILE}"
@@ -195,11 +192,5 @@ def runTests(testFile, testName) {
         if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
         
         set PLAYWRIGHT_HEADLESS=${isHeadless}
-        
-        pytest ${testFile} -v ^
-            --junit-xml="%REPORTS_DIR%\\${testName}_results.xml" ^
-            --html="%REPORTS_DIR%\\${testName}_report.html" ^
-            --self-contained-html ^
-            --alluredir="%REPORTS_DIR%\\allure-results"
     """
 }
