@@ -199,9 +199,6 @@ def runTests(testFile, testName) {
             --alluredir="%REPORTS_DIR%\\allure-results"
     """
 }
-            --alluredir="%REPORTS_DIR%\\allure-results"
-    """
-}
             --self-contained-html ^
             --alluredir="%REPORTS_DIR%\\allure-results"
     """
