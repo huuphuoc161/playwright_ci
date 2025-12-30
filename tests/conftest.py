@@ -11,9 +11,13 @@ load_dotenv()
 
 @pytest.fixture(scope="session")
 def browser_type_launch_args(browser_type_launch_args):
+    # Use headless mode for CI/CD environments (GitHub Actions)
+    # Local testing can use headless=False with proper display
+    headless_mode = os.getenv("CI", "true").lower() == "true"
+    
     return {
         **browser_type_launch_args,
-        "headless": False,
+        "headless": headless_mode,
         "slow_mo": 500
     }
 
