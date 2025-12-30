@@ -5,24 +5,6 @@
 pipeline {
     agent any
     
-    parameters {
-        choice(
-            name: 'EXECUTION_MODE',
-            choices: ['sequential', 'parallel'],
-            description: 'Run tests sequentially or in parallel'
-        )
-        choice(
-            name: 'BROWSER',
-            choices: ['chromium', 'firefox', 'webkit'],
-            description: 'Select browser for testing'
-        )
-        choice(
-            name: 'HEADLESS_MODE',
-            choices: ['headless'],
-            description: 'Run tests in headless mode (no UI) or headed mode (with UI)'
-        )
-    }
-    
     environment {
         PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
         PLAYWRIGHT_BROWSERS_PATH = "${WORKSPACE}/ms-playwright/"
@@ -70,7 +52,7 @@ pipeline {
                     
                     if not exist "${REPORTS_DIR}" mkdir "${REPORTS_DIR}"
                     
-                    pytest tests\\login_suite.py -v ^
+                    pytest tests\\login_failed.py -v ^
                         --html="${HTML_REPORT_FILE}" --self-contained-html ^
                         --junit-xml="${JUNIT_REPORT_FILE}"
                     deactivate
@@ -105,7 +87,7 @@ pipeline {
             script {
                 echo "✅ Job Succeeded. Sending success notification to Slack..."
                 slackSend (
-                    channel: '#demo-webhook', // Kênh Slack nhận thông báo thành công
+                    channel: '#jenkins-job', // Kênh Slack nhận thông báo thành công
                     color: 'good',          
                     message: "✅ *Job ${JOB_NAME}* (Build #${BUILD_NUMBER}) đã chạy thành công! " +
                              "Xem chi tiết: <${BUILD_URL}|Link Build>" // Link đến Jenkins build
@@ -117,7 +99,7 @@ pipeline {
             script {
                 echo "❌ Job Failed. Sending failure notification to Slack..."
                 slackSend (
-                    channel: '#demo-webhook', // Kênh Slack để gửi thông báo thất bại
+                    channel: '#jenkins-job', // Kênh Slack để gửi thông báo thất bại
                     color: 'danger',         
                     message: "❌ *Job ${JOB_NAME}* (Build #${BUILD_NUMBER}) đã *THẤT BẠI*! " +
                              "Vui lòng kiểm tra gấp: <${BUILD_URL}|Link Build>"
@@ -129,7 +111,7 @@ pipeline {
             script {
                 echo "⚠️ Job Unstable. Sending unstable notification to Slack..."
                 slackSend (
-                    channel: '#demo-webhook', // Kênh Slack để gửi thông báo không ổn định
+                    channel: '#jenkins-job', // Kênh Slack để gửi thông báo không ổn định
                     color: 'warning',       
                     message: "⚠️ *Job ${JOB_NAME}* (Build #${BUILD_NUMBER}) đang ở trạng thái *KHÔNG ỔN ĐỊNH*. " +
                              "Vui lòng kiểm tra: <${BUILD_URL}|Link Build>"
@@ -137,17 +119,4 @@ pipeline {
             }
         }
     }
-}
-
-def runTests(testFile, testName) {
-    echo "🧪 Running ${testName} tests with ${params.BROWSER} browser (${params.HEADLESS_MODE} mode)..."
-    
-    def isHeadless = params.HEADLESS_MODE == 'headless' ? 'true' : 'false'
-    
-    bat """
-        call venv\\Scripts\\activate.bat
-        if not exist "%REPORTS_DIR%" mkdir "%REPORTS_DIR%"
-        
-        set PLAYWRIGHT_HEADLESS=${isHeadless}
-    """
 }
