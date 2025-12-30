@@ -110,7 +110,7 @@ pipeline {
             script {
                 echo "✅ Job Succeeded. Sending success email..."
                 emailext (
-                    to: 'testnotification012026@yopmail.com',
+                    to: 'nguyenhuuphuoc1806@gmail.com',
                     subject: "[Jenkins]: ${JOB_NAME} - Build #${BUILD_NUMBER} - SUCCESS",
                     body: """
                         <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) <b>THÀNH CÔNG</b>!</p>
@@ -125,7 +125,7 @@ pipeline {
             script {
                 echo "❌ Job Failed. Sending failure email..."
                 emailext (
-                    to: 'testnotification012026@yopmail.com',
+                    to: 'nguyenhuuphuoc1806@gmail.com',
                     subject: "[Jenkins]: ${JOB_NAME} - Build #${BUILD_NUMBER} - FAILED",
                     body: """
                         <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) <b>THẤT BẠI</b>!</p>
@@ -141,7 +141,7 @@ pipeline {
             script {
                 echo "⚠️ Job Unstable. Sending unstable email..."
                 emailext (
-                    to: 'testnotification012026@yopmail.com',
+                    to: 'nguyenhuuphuoc1806@gmail.com',
                     subject: "[Jenkins]: ${JOB_NAME} - Build #${BUILD_NUMBER} - Usnstable",
                     body: """
                         <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) <b>KHÔNG ỔN ĐỊNH</b>!</p>
