@@ -70,7 +70,7 @@ pipeline {
                 echo "🎭 Installing Playwright browsers..."
                 bat """
                     call venv\\Scripts\\activate.bat
-                    playwright install chromium
+                    playwright install
                     deactivate
                 """
             }

@@ -25,7 +25,7 @@ pipeline {
     
     environment {
         PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
-        PLAYWRIGHT_BROWSERS_PATH = "${WORKSPACE}/ms-playwright/"
+        PLAYWRIGHT_BROWSERS_PATH = "C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\ms-playwright"
         REPORTS_DIR = 'reports'
         JUNIT_REPORT_FILE = "${REPORTS_DIR}/junit.xml"
         HTML_REPORT_FILE = "${REPORTS_DIR}/report.html"
@@ -57,7 +57,7 @@ pipeline {
                 echo "🎭 Installing Playwright browsers..."
                 bat '''
                     call venv\\Scripts\\activate.bat
-                    playwright install chromium firefox webkit
+                    playwright install
                 '''
             }
         }
