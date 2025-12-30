@@ -25,9 +25,10 @@ pipeline {
     
     environment {
         PYTHON_CMD = 'C:\\Users\\huuphuoc.nguyen\\AppData\\Local\\Python\\bin\\python3.exe'
-        WORKSPACE_DIR = "${WORKSPACE}"
-        REPORTS_DIR = "${WORKSPACE}\\reports"
-        ALLURE_RESULTS = "${WORKSPACE}\\reports\\allure-results"
+        PLAYWRIGHT_BROWSERS_PATH = "${WORKSPACE}/ms-playwright/"
+        REPORTS_DIR = 'reports'
+        JUNIT_REPORT_FILE = "${REPORTS_DIR}/junit.xml"
+        HTML_REPORT_FILE = "${REPORTS_DIR}/report.html"
     }
     
     stages {
