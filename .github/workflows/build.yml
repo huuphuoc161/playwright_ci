@@ -1,0 +1,73 @@
+name: Playwright Tests CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+        browser: [chromium]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install ${{ matrix.browser }}
+          playwright install-deps
+
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Run tests
+        run: |
+          pytest tests/login_suite.py \
+            --html=reports/report.html \
+            --self-contained-html \
+            --junitxml=reports/junit.xml \
+            -v
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-reports
+          path: reports/
+          retention-days: 30
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Display structure
+        run: ls -R
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Test reports are available in the artifacts section'
+            })
