@@ -1,8 +1,6 @@
 pipeline {
     agent any
 
-    def config = [:] // Initialize an empty map to hold our configuration
-
     // Environment block for variables that Jenkins itself needs or are derived
     environment {
         // These will be populated from 'config' later, or are fixed paths
@@ -27,6 +25,8 @@ pipeline {
         stage('Load Configuration') {
             steps {
                 script {
+                    def config = [:] // Initialize config map
+                    
                     echo "📝 Loading pipeline configuration from pipeline_config.yaml..."
                     // Read the YAML file
                     config = readYaml file: '.github/workflows/jenkinsPipeline.yaml'
