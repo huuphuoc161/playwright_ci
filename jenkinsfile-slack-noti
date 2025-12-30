@@ -64,39 +64,17 @@ pipeline {
         
         stage('Execute Tests') {
             steps {
-                script {
-                    echo "🚀 Execution Mode: ${params.EXECUTION_MODE}"
-                    echo "🌐 Browser: ${params.BROWSER}"
-                    echo "📺 Headless Mode: ${params.HEADLESS_MODE}"
+                echo "🧪 Running login tests..."
+                bat """
+                    call venv\\Scripts\\activate.bat
                     
-                    if (params.EXECUTION_MODE == 'parallel') {
-                        echo "Running tests in PARALLEL mode..."
-                        parallel(
-                            'Login Tests': {
-                                runTests('tests\\login_suite.py', 'login')
-                            },
-                            'Election Tests': {
-                                if (fileExists('tests/election_page.py')) {
-                                    runTests('tests\\election_page.py', 'election')
-                                }
-                            },
-                            'Inventory Tests': {
-                                if (fileExists('tests/inventory_page.py')) {
-                                    runTests('tests\\inventory_page.py', 'inventory')
-                                }
-                            }
-                        )
-                    } else {
-                        echo "Running tests in SEQUENTIAL mode..."
-                        runTests('tests\\login_suite.py', 'login')
-                        if (fileExists('tests/election_page.py')) {
-                            runTests('tests\\election_page.py', 'election')
-                        }
-                        if (fileExists('tests/inventory_page.py')) {
-                            runTests('tests\\inventory_page.py', 'inventory')
-                        }
-                    }
-                }
+                    if not exist "${REPORTS_DIR}" mkdir "${REPORTS_DIR}"
+                    
+                    pytest tests\\login_suite.py -v ^
+                        --html="${HTML_REPORT_FILE}" --self-contained-html ^
+                        --junit-xml="${JUNIT_REPORT_FILE}"
+                    deactivate
+                """
             }
         }
     }

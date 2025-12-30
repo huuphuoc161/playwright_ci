@@ -62,41 +62,19 @@ pipeline {
             }
         }
         
-        stage('Execute Tests') {
+        stage('Run Tests') {
             steps {
-                script {
-                    echo "🚀 Execution Mode: ${params.EXECUTION_MODE}"
-                    echo "🌐 Browser: ${params.BROWSER}"
-                    echo "📺 Headless Mode: ${params.HEADLESS_MODE}"
+                echo "🧪 Running login tests..."
+                bat """
+                    call venv\\Scripts\\activate.bat
                     
-                    if (params.EXECUTION_MODE == 'parallel') {
-                        echo "Running tests in PARALLEL mode..."
-                        parallel(
-                            'Login Tests': {
-                                runTests('tests\\login_suite.py', 'login')
-                            },
-                            'Election Tests': {
-                                if (fileExists('tests/election_page.py')) {
-                                    runTests('tests\\election_page.py', 'election')
-                                }
-                            },
-                            'Inventory Tests': {
-                                if (fileExists('tests/inventory_page.py')) {
-                                    runTests('tests\\inventory_page.py', 'inventory')
-                                }
-                            }
-                        )
-                    } else {
-                        echo "Running tests in SEQUENTIAL mode..."
-                        runTests('tests\\login_suite.py', 'login')
-                        if (fileExists('tests/election_page.py')) {
-                            runTests('tests\\election_page.py', 'election')
-                        }
-                        if (fileExists('tests/inventory_page.py')) {
-                            runTests('tests\\inventory_page.py', 'inventory')
-                        }
-                    }
-                }
+                    if not exist "${REPORTS_DIR}" mkdir "${REPORTS_DIR}"
+                    
+                    pytest tests\\login_suite.py -v ^
+                        --html="${HTML_REPORT_FILE}" --self-contained-html ^
+                        --junit-xml="${JUNIT_REPORT_FILE}"
+                    deactivate
+                """
             }
         }
 
@@ -131,52 +109,18 @@ pipeline {
         success {
             script {
                 echo "✅ Job Succeeded. Sending success email..."
-                emailext (
-                    to: 'testnotification012026@yopmail.com', // Địa chỉ email nhận khi thành công
-                    subject: "[Jenkins]: ${JOB_NAME} - Build #${BUILD_NUMBER}",
-                    body: """
-                        <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) thành công!</p>
-                        <p>Chi tiết: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-                        <p>Kết quả Test (JUnit): <a href="${BUILD_URL}testReport/">Xem tổng quan test</a></p>
-                    """,
-                    mimeType: 'text/html',
-                    attachmentsPattern: "${REPORTS_DIR}/${HTML_REPORT_FILE}" // Đính kèm  HTML
-                )
             }
         }
         
         failure {
             script {
                 echo "❌ Job Failed. Sending failure email..."
-                emailext (
-                    to: 'testnotification012026@yopmail.com', // Địa chỉ email nhận khi thất bại
-                    subject: "[Jenkins]: ${JOB_NAME} - Build #${BUILD_NUMBER}",
-                    body: """
-                        <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) <b>THẤT BẠI</b>!</p>
-                        <p>Vui lòng kiểm tra gấp.</p>
-                        <p>Chi tiết build: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-                        <p>Console Output: <a href="${BUILD_URL}console">Xem log lỗi</a></p>
-                    """,
-                    mimeType: 'text/html',
-                    attachmentsPattern: "${REPORTS_DIR}/${HTML_REPORT_FILE}"
-                )
             }
         }
 
         unstable {
             script {
                 echo "⚠️ Job Unstable. Sending unstable email..."
-                emailext (
-                    to: 'testnotification012026@yopmail.com', // Địa chỉ email nhận khi không ổn định
-                    subject: "[Jenkins] KHÔNG ỔN ĐỊNH: ${JOB_NAME} - Build #${BUILD_NUMBER}",
-                    body: """
-                        <p>Job <b>${JOB_NAME}</b> (Build #${BUILD_NUMBER}) không ổn định!</p>
-                        <p>Vui lòng xem xét các lỗi test.</p>
-                        <p>Chi tiết build: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-                    """,
-                    mimeType: 'text/html',
-                    attachmentsPattern: "${REPORTS_DIR}/${HTML_REPORT_FILE}"
-                )
             }
         }
     }
